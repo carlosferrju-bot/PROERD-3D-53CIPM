@@ -21,9 +21,10 @@ jobs:
       - name: Install Blender and FFmpeg
         run: |
           sudo apt-get update
-          sudo apt-get install -y blender ffmpeg
+          sudo apt-get install -y blender ffmpeg libegl1 libgl1 libglu1-mesa mesa-utils
           blender --version
           ffmpeg -version | head -n 1
+          ldconfig -p | grep -E 'libEGL.so.1|libGL.so.1' || true
 
       - name: Bootstrap Blender project
         run: blender --background --python blender/scripts/project_bootstrap.py
@@ -34,6 +35,8 @@ jobs:
           blender --background --python blender/scripts/scene_01_demo.py
 
       - name: Render SC01 frames
+        env:
+          LIBGL_ALWAYS_SOFTWARE: '1'
         run: |
           mkdir -p /tmp/proerd_frames
           blender --background /tmp/PROERD_SC01_demo.blend \
