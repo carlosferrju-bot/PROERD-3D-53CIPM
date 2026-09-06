@@ -7,9 +7,10 @@ main()
 scene = bpy.context.scene
 scene.render.filepath = '/tmp/proerd_full_frames/frame_'
 
-# Renderização final otimizada: EEVEE mantém os materiais, iluminação, câmera
-# e animação da cena, mas evita o custo extremo do Cycles CPU no runner.
-scene.render.engine = 'BLENDER_EEVEE_NEXT'
+# Blender 4.2 instalado no runner usa BLENDER_EEVEE.
+# EEVEE mantém os materiais, iluminação, câmera e animação da cena,
+# evitando o custo extremo do Cycles CPU no runner.
+scene.render.engine = 'BLENDER_EEVEE'
 scene.render.resolution_x = 1280
 scene.render.resolution_y = 720
 scene.render.resolution_percentage = 100
