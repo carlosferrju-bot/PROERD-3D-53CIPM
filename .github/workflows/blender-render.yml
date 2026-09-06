@@ -18,73 +18,46 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Install Blender, FFmpeg and render dependencies
+      - name: Install Blender and FFmpeg render dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y blender ffmpeg yt-dlp libegl1 libgl1 libglu1-mesa mesa-utils
+          sudo apt-get install -y blender ffmpeg libegl1 libgl1 libglu1-mesa mesa-utils
           blender --version
           ffmpeg -version | head -n 1
-          yt-dlp --version
           ldconfig -p | grep -E 'libEGL.so.1|libGL.so.1' || true
 
-      - name: Download original lesson audio reference
-        run: |
-          mkdir -p /tmp/proerd_audio
-          yt-dlp --no-playlist --extract-audio --audio-format mp3 --audio-quality 64K \
-            -o '/tmp/proerd_audio/source.%(ext)s' \
-            'https://www.youtube.com/watch?v=1b4LaFHC0QQ'
-          test -s /tmp/proerd_audio/source.mp3
-          ffprobe -v error -show_entries format=duration,size \
-            -of default=noprint_wrappers=1 /tmp/proerd_audio/source.mp3
-
-      - name: Build full realistic Cycles scene
-        run: |
-          mkdir -p /tmp/proerd_full_frames
-          blender --background --python blender/scripts/scene_full_realistic.py
-          test -s /tmp/PROERD_Licao03_full_realistic.blend
-
-      - name: Render full 87.95s animation with Cycles
+      - name: Build and render full realistic Cycles scene
         env:
           LIBGL_ALWAYS_SOFTWARE: '1'
           LIBGL_DRIVERS_PATH: '/usr/lib/x86_64-linux-gnu/dri'
         run: |
           mkdir -p /tmp/proerd_full_frames
           test -e /usr/lib/x86_64-linux-gnu/libEGL.so.1
-          blender --background /tmp/PROERD_Licao03_full_realistic.blend \
-            -o /tmp/proerd_full_frames/frame_ \
-            -F PNG \
-            -s 1 \
-            -e 2111 \
-            -a
+          blender --background --python blender/scripts/render_full_pipeline.py
+          test -s /tmp/PROERD_Licao03_full_realistic.blend
           test -s /tmp/proerd_full_frames/frame_0001.png
           test -s /tmp/proerd_full_frames/frame_2111.png
 
-      - name: Encode video and synchronize original audio
+      - name: Encode complete visual MP4
         run: |
           ffmpeg -y -framerate 24 -i /tmp/proerd_full_frames/frame_%04d.png \
             -c:v libx264 -preset medium -crf 18 -pix_fmt yuv420p \
-            -movflags +faststart /tmp/PROERD_Licao03_visual.mp4
-          ffmpeg -y -i /tmp/PROERD_Licao03_visual.mp4 -i /tmp/proerd_audio/source.mp3 \
-            -map 0:v:0 -map 1:a:0 -c:v copy -c:a aac -b:a 128k \
-            -af 'loudnorm=I=-16:TP=-1.5:LRA=11' -t 87.95 -movflags +faststart \
-            /tmp/PROERD_Licao03_FINAL.mp4
-          ls -lh /tmp/PROERD_Licao03_FINAL.mp4
+            -movflags +faststart /tmp/PROERD_Licao03_VISUAL.mp4
+          ls -lh /tmp/PROERD_Licao03_VISUAL.mp4
 
-      - name: Validate final video
+      - name: Validate complete visual video
         run: |
-          test -s /tmp/PROERD_Licao03_FINAL.mp4
+          test -s /tmp/PROERD_Licao03_VISUAL.mp4
           ffprobe -v error -show_entries format=duration,size \
-            -of default=noprint_wrappers=1 /tmp/PROERD_Licao03_FINAL.mp4
+            -of default=noprint_wrappers=1 /tmp/PROERD_Licao03_VISUAL.mp4
           ffprobe -v error -select_streams v:0 -show_entries stream=width,height,r_frame_rate \
-            -of default=noprint_wrappers=1 /tmp/PROERD_Licao03_FINAL.mp4
-          ffprobe -v error -select_streams a:0 -show_entries stream=codec_name,sample_rate,channels \
-            -of default=noprint_wrappers=1 /tmp/PROERD_Licao03_FINAL.mp4
+            -of default=noprint_wrappers=1 /tmp/PROERD_Licao03_VISUAL.mp4
 
-      - name: Upload final complete video
+      - name: Upload complete visual video
         uses: actions/upload-artifact@v4
         with:
-          name: PROERD-Licao03-FINAL-87s
-          path: /tmp/PROERD_Licao03_FINAL.mp4
+          name: PROERD-Licao03-VISUAL-87s
+          path: /tmp/PROERD_Licao03_VISUAL.mp4
           if-no-files-found: error
 
       - name: Upload Blender scene
