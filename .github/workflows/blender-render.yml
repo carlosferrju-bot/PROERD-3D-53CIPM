@@ -37,8 +37,10 @@ jobs:
       - name: Render SC01 frames
         env:
           LIBGL_ALWAYS_SOFTWARE: '1'
+          LIBGL_DRIVERS_PATH: '/usr/lib/x86_64-linux-gnu/dri'
         run: |
           mkdir -p /tmp/proerd_frames
+          test -e /usr/lib/x86_64-linux-gnu/libEGL.so.1
           blender --background /tmp/PROERD_SC01_demo.blend \
             -o /tmp/proerd_frames/frame_ \
             -F PNG \
