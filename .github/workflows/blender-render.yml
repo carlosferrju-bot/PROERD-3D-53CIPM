@@ -8,6 +8,12 @@ on:
       - 'assets/**'
       - '.github/workflows/blender-render.yml'
 
+# Evita consumir um runner inteiro com uma renderização antiga quando
+# uma nova versão do pipeline é enviada.
+concurrency:
+  group: proerd-3d-full-render
+  cancel-in-progress: true
+
 jobs:
   render:
     runs-on: ubuntu-latest
@@ -26,7 +32,7 @@ jobs:
           ffmpeg -version | head -n 1
           ldconfig -p | grep -E 'libEGL.so.1|libGL.so.1' || true
 
-      - name: Build and render full realistic Cycles scene
+      - name: Build and render full realistic EEVEE scene
         env:
           LIBGL_ALWAYS_SOFTWARE: '1'
           LIBGL_DRIVERS_PATH: '/usr/lib/x86_64-linux-gnu/dri'
