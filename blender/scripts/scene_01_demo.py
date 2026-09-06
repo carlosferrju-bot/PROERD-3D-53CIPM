@@ -1,7 +1,8 @@
-"""Primeira cena 3D de demonstração do PROERD 53ª CIPM.
+"""Primeira cena 3D de demonstração do PROERD.
 
 Cena curta para validar o pipeline completo do GitHub Actions:
 Blender -> cena 3D -> animação simples -> frames -> MP4.
+A identidade 53ª CIPM pertence ao projeto/apresentação, não aos personagens.
 """
 
 import bpy
@@ -89,6 +90,7 @@ def setup_lights():
 
 def character(prefix, x, shirt_mat, hair_mat, skin_mat, z=0):
     # Personagens originais, em estilo 3D infantil, sem copiar os personagens do vídeo de referência.
+    # Os personagens não carregam identificação de unidade policial.
     cube(prefix + "_body", (x, 0, 2.0 + z), (0.72, 0.45, 0.9), shirt_mat, 0.18)
     uv(prefix + "_head", (x, -0.02, 3.55 + z), (0.62, 0.58, 0.68), skin_mat)
     uv(prefix + "_hair", (x, -0.03, 4.05 + z), (0.64, 0.60, 0.28), hair_mat)
@@ -98,6 +100,27 @@ def character(prefix, x, shirt_mat, hair_mat, skin_mat, z=0):
     eyes = mat(prefix + "_eyes", (0.02, 0.02, 0.02))
     uv(prefix + "_eyeL", (x - 0.21, -0.55, 3.62 + z), (0.07, 0.04, 0.09), eyes)
     uv(prefix + "_eyeR", (x + 0.21, -0.55, 3.62 + z), (0.07, 0.04, 0.09), eyes)
+
+
+def configure_render(scene):
+    # Compatibilidade entre Blender 4.0 (BLENDER_EEVEE) e versões que usam EEVEE_NEXT.
+    available = {item.identifier for item in scene.bl_rna.properties["render"].fixed_type.properties["engine"].enum_items}
+    if "BLENDER_EEVEE_NEXT" in available:
+        scene.render.engine = "BLENDER_EEVEE_NEXT"
+    elif "BLENDER_EEVEE" in available:
+        scene.render.engine = "BLENDER_EEVEE"
+    else:
+        raise RuntimeError(f"Motor EEVEE não encontrado. Disponíveis: {sorted(available)}")
+
+    scene.render.resolution_x = W
+    scene.render.resolution_y = H
+    scene.render.resolution_percentage = 100
+    scene.render.fps = FPS
+    scene.frame_start = 1
+    scene.frame_end = DURATION * FPS
+    scene.render.image_settings.file_format = "PNG"
+    scene.render.film_transparent = False
+    scene.render.filepath = "/tmp/proerd_frames/frame_"
 
 
 def main():
@@ -127,7 +150,7 @@ def main():
     cube("TV", (0, 3.25, 5.25), (3.1, 0.12, 1.65), navy, 0.12)
     cube("TVScreen", (0, 3.08, 5.25), (2.65, 0.04, 1.25), white, 0.03)
 
-    # Identidade visual no ambiente
+    # Identidade visual PROERD no ambiente; a 53ª CIPM fica apenas na identidade do projeto.
     text("Title", "LIÇÃO 03", (-4.9, 3.0, 6.4), 0.65, red)
     text("Subtitle", "RISCOS E CONSEQUÊNCIAS", (-4.0, 3.0, 5.7), 0.38, navy)
     text("Theme", "JOÃO FAZ AULA DE KARATÊ", (-3.4, 3.0, 5.15), 0.25, navy)
@@ -135,25 +158,15 @@ def main():
     character("JOAO", -1.45, shirt1, hair1, skin)
     character("MATHEUS", 1.45, shirt2, hair2, skin)
 
-    # Placa PROERD estilizada
+    # Placa PROERD, sem identificação da unidade nos personagens.
     cube("Badge", (5.7, 3.0, 4.8), (1.5, 0.08, 0.9), red, 0.12)
     text("BadgeText", "PROERD", (5.7, 2.88, 4.82), 0.42, white)
-    text("UnitText", "53ª CIPM", (5.7, 2.88, 4.30), 0.20, white)
 
     cam = setup_camera()
     setup_lights()
 
     scene = bpy.context.scene
-    scene.render.engine = "BLENDER_EEVEE_NEXT"
-    scene.render.resolution_x = W
-    scene.render.resolution_y = H
-    scene.render.resolution_percentage = 100
-    scene.render.fps = FPS
-    scene.frame_start = 1
-    scene.frame_end = DURATION * FPS
-    scene.render.image_settings.file_format = "PNG"
-    scene.render.film_transparent = False
-    scene.render.filepath = "/tmp/proerd_frames/frame_"
+    configure_render(scene)
 
     # Entrada dos personagens e leve aproximação da câmera.
     for prefix, start_x, end_x in (("JOAO", -5.0, -1.45), ("MATHEUS", 5.0, 1.45)):
