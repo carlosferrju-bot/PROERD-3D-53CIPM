@@ -1,4 +1,4 @@
-name: Blender Render
+name: PROERD 3D Full Render
 
 on:
   workflow_dispatch:
@@ -18,67 +18,86 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Install Blender and FFmpeg
+      - name: Install Blender, FFmpeg and render dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y blender ffmpeg libegl1 libgl1 libglu1-mesa mesa-utils
+          sudo apt-get install -y blender ffmpeg yt-dlp libegl1 libgl1 libglu1-mesa mesa-utils
           blender --version
           ffmpeg -version | head -n 1
+          yt-dlp --version
           ldconfig -p | grep -E 'libEGL.so.1|libGL.so.1' || true
 
-      - name: Bootstrap Blender project
-        run: blender --background --python blender/scripts/project_bootstrap.py
-
-      - name: Build SC01 3D scene
+      - name: Download original lesson audio reference
         run: |
-          mkdir -p /tmp/proerd_frames
-          blender --background --python blender/scripts/scene_01_demo.py
+          mkdir -p /tmp/proerd_audio
+          yt-dlp --no-playlist --extract-audio --audio-format mp3 --audio-quality 64K \
+            -o '/tmp/proerd_audio/source.%(ext)s' \
+            'https://www.youtube.com/watch?v=1b4LaFHC0QQ'
+          test -s /tmp/proerd_audio/source.mp3
+          ffprobe -v error -show_entries format=duration,size \
+            -of default=noprint_wrappers=1 /tmp/proerd_audio/source.mp3
 
-      - name: Render SC01 frames
+      - name: Build full realistic Cycles scene
+        run: |
+          mkdir -p /tmp/proerd_full_frames
+          blender --background --python blender/scripts/scene_full_realistic.py
+          test -s /tmp/PROERD_Licao03_full_realistic.blend
+
+      - name: Render full 87.95s animation with Cycles
         env:
           LIBGL_ALWAYS_SOFTWARE: '1'
           LIBGL_DRIVERS_PATH: '/usr/lib/x86_64-linux-gnu/dri'
         run: |
-          mkdir -p /tmp/proerd_frames
+          mkdir -p /tmp/proerd_full_frames
           test -e /usr/lib/x86_64-linux-gnu/libEGL.so.1
-          blender --background /tmp/PROERD_SC01_demo.blend \
-            -o /tmp/proerd_frames/frame_ \
+          blender --background /tmp/PROERD_Licao03_full_realistic.blend \
+            -o /tmp/proerd_full_frames/frame_ \
             -F PNG \
             -s 1 \
-            -e 180 \
+            -e 2111 \
             -a
+          test -s /tmp/proerd_full_frames/frame_0001.png
+          test -s /tmp/proerd_full_frames/frame_2111.png
 
-      - name: Encode SC01 MP4
+      - name: Encode video and synchronize original audio
         run: |
-          ffmpeg -y -framerate 30 -i /tmp/proerd_frames/frame_%04d.png \
-            -c:v libx264 -preset medium -crf 20 -pix_fmt yuv420p \
-            -movflags +faststart /tmp/PROERD_SC01_demo.mp4
-          ls -lh /tmp/PROERD_SC01_demo.mp4
+          ffmpeg -y -framerate 24 -i /tmp/proerd_full_frames/frame_%04d.png \
+            -c:v libx264 -preset medium -crf 18 -pix_fmt yuv420p \
+            -movflags +faststart /tmp/PROERD_Licao03_visual.mp4
+          ffmpeg -y -i /tmp/PROERD_Licao03_visual.mp4 -i /tmp/proerd_audio/source.mp3 \
+            -map 0:v:0 -map 1:a:0 -c:v copy -c:a aac -b:a 128k \
+            -af 'loudnorm=I=-16:TP=-1.5:LRA=11' -t 87.95 -movflags +faststart \
+            /tmp/PROERD_Licao03_FINAL.mp4
+          ls -lh /tmp/PROERD_Licao03_FINAL.mp4
 
-      - name: Validate render output
+      - name: Validate final video
         run: |
-          test -s /tmp/PROERD_SC01_demo.mp4
+          test -s /tmp/PROERD_Licao03_FINAL.mp4
           ffprobe -v error -show_entries format=duration,size \
-            -of default=noprint_wrappers=1 /tmp/PROERD_SC01_demo.mp4
+            -of default=noprint_wrappers=1 /tmp/PROERD_Licao03_FINAL.mp4
+          ffprobe -v error -select_streams v:0 -show_entries stream=width,height,r_frame_rate \
+            -of default=noprint_wrappers=1 /tmp/PROERD_Licao03_FINAL.mp4
+          ffprobe -v error -select_streams a:0 -show_entries stream=codec_name,sample_rate,channels \
+            -of default=noprint_wrappers=1 /tmp/PROERD_Licao03_FINAL.mp4
 
-      - name: Upload 3D video
+      - name: Upload final complete video
         uses: actions/upload-artifact@v4
         with:
-          name: proerd-sc01-3d-video
-          path: /tmp/PROERD_SC01_demo.mp4
+          name: PROERD-Licao03-FINAL-87s
+          path: /tmp/PROERD_Licao03_FINAL.mp4
           if-no-files-found: error
 
       - name: Upload Blender scene
         uses: actions/upload-artifact@v4
         with:
-          name: proerd-sc01-blend
-          path: /tmp/PROERD_SC01_demo.blend
+          name: PROERD-Licao03-FINAL-blend
+          path: /tmp/PROERD_Licao03_full_realistic.blend
           if-no-files-found: error
 
       - name: Upload render workspace
         uses: actions/upload-artifact@v4
         with:
-          name: proerd-3d-workspace
+          name: proerd-3d-workspace-full
           path: |
             blender/
             assets/
