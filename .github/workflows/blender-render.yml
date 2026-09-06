@@ -6,6 +6,7 @@ on:
     paths:
       - 'blender/**'
       - 'assets/**'
+      - '.github/workflows/blender-render.yml'
 
 jobs:
   render:
@@ -17,19 +18,58 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Install Blender
+      - name: Install Blender and FFmpeg
         run: |
           sudo apt-get update
-          sudo apt-get install -y blender
+          sudo apt-get install -y blender ffmpeg
           blender --version
+          ffmpeg -version | head -n 1
 
       - name: Bootstrap Blender project
         run: blender --background --python blender/scripts/project_bootstrap.py
 
-      - name: Check project files
+      - name: Build SC01 3D scene
         run: |
-          echo "Blender pipeline initialized."
-          find blender -maxdepth 3 -type f -print
+          mkdir -p /tmp/proerd_frames
+          blender --background --python blender/scripts/scene_01_demo.py
+
+      - name: Render SC01 frames
+        run: |
+          mkdir -p /tmp/proerd_frames
+          blender --background /tmp/PROERD_SC01_demo.blend \
+            --render-output /tmp/proerd_frames/frame_ \
+            --render-format PNG \
+            --start-frame 1 \
+            --end-frame 180 \
+            --render-threads 0 \
+            --render
+
+      - name: Encode SC01 MP4
+        run: |
+          ffmpeg -y -framerate 30 -i /tmp/proerd_frames/frame_%04d.png \
+            -c:v libx264 -preset medium -crf 20 -pix_fmt yuv420p \
+            -movflags +faststart /tmp/PROERD_SC01_demo.mp4
+          ls -lh /tmp/PROERD_SC01_demo.mp4
+
+      - name: Validate render output
+        run: |
+          test -s /tmp/PROERD_SC01_demo.mp4
+          ffprobe -v error -show_entries format=duration,size \
+            -of default=noprint_wrappers=1 /tmp/PROERD_SC01_demo.mp4
+
+      - name: Upload 3D video
+        uses: actions/upload-artifact@v4
+        with:
+          name: proerd-sc01-3d-video
+          path: /tmp/PROERD_SC01_demo.mp4
+          if-no-files-found: error
+
+      - name: Upload Blender scene
+        uses: actions/upload-artifact@v4
+        with:
+          name: proerd-sc01-blend
+          path: /tmp/PROERD_SC01_demo.blend
+          if-no-files-found: error
 
       - name: Upload render workspace
         uses: actions/upload-artifact@v4
