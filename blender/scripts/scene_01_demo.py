@@ -79,7 +79,6 @@ def setup_lights():
     key.data.energy = 1300
     key.data.shape = "DISK"
     key.data.size = 7
-    key.rotation_euler = (0, 0, 0)
 
     bpy.ops.object.light_add(type="AREA", location=(-7, 1, 5))
     fill = bpy.context.object
@@ -89,21 +88,21 @@ def setup_lights():
 
 
 def character(prefix, x, shirt_mat, hair_mat, skin_mat, z=0):
-    # Estilo 3D infantil simplificado, sem copiar personagens do vídeo de referência.
+    # Personagens originais, em estilo 3D infantil, sem copiar os personagens do vídeo de referência.
     cube(prefix + "_body", (x, 0, 2.0 + z), (0.72, 0.45, 0.9), shirt_mat, 0.18)
     uv(prefix + "_head", (x, -0.02, 3.55 + z), (0.62, 0.58, 0.68), skin_mat)
     uv(prefix + "_hair", (x, -0.03, 4.05 + z), (0.64, 0.60, 0.28), hair_mat)
-    cube(prefix + "_legL", (x - 0.28, 0, 0.75 + z), (0.20, 0.25, 0.65), mat("jeans", (0.08, 0.16, 0.28)), 0.12)
-    cube(prefix + "_legR", (x + 0.28, 0, 0.75 + z), (0.20, 0.25, 0.65), mat("jeans2", (0.08, 0.16, 0.28)), 0.12)
-    uv(prefix + "_eyeL", (x - 0.21, -0.55, 3.62 + z), (0.07, 0.04, 0.09), mat("eyes", (0.02, 0.02, 0.02)))
-    uv(prefix + "_eyeR", (x + 0.21, -0.55, 3.62 + z), (0.07, 0.04, 0.09), mat("eyes2", (0.02, 0.02, 0.02)))
+    jeans = mat(prefix + "_jeans", (0.08, 0.16, 0.28))
+    cube(prefix + "_legL", (x - 0.28, 0, 0.75 + z), (0.20, 0.25, 0.65), jeans, 0.12)
+    cube(prefix + "_legR", (x + 0.28, 0, 0.75 + z), (0.20, 0.25, 0.65), jeans, 0.12)
+    eyes = mat(prefix + "_eyes", (0.02, 0.02, 0.02))
+    uv(prefix + "_eyeL", (x - 0.21, -0.55, 3.62 + z), (0.07, 0.04, 0.09), eyes)
+    uv(prefix + "_eyeR", (x + 0.21, -0.55, 3.62 + z), (0.07, 0.04, 0.09), eyes)
 
 
 def main():
     bpy.ops.object.select_all(action="SELECT")
     bpy.ops.object.delete(use_global=False)
-    for datablocks in (bpy.data.meshes, bpy.data.curves, bpy.data.materials, bpy.data.cameras, bpy.data.lights):
-        pass
 
     navy = mat("PROERD Navy", (0.025, 0.09, 0.20), roughness=0.35)
     red = mat("PROERD Red", (0.75, 0.03, 0.05), roughness=0.35)
@@ -133,7 +132,6 @@ def main():
     text("Subtitle", "RISCOS E CONSEQUÊNCIAS", (-4.0, 3.0, 5.7), 0.38, navy)
     text("Theme", "JOÃO FAZ AULA DE KARATÊ", (-3.4, 3.0, 5.15), 0.25, navy)
 
-    # Dois personagens originais
     character("JOAO", -1.45, shirt1, hair1, skin)
     character("MATHEUS", 1.45, shirt2, hair2, skin)
 
@@ -149,7 +147,7 @@ def main():
     scene.render.engine = "BLENDER_EEVEE_NEXT"
     scene.render.resolution_x = W
     scene.render.resolution_y = H
-    scene.render.resolution_percentage = 50
+    scene.render.resolution_percentage = 100
     scene.render.fps = FPS
     scene.frame_start = 1
     scene.frame_end = DURATION * FPS
@@ -157,7 +155,7 @@ def main():
     scene.render.film_transparent = False
     scene.render.filepath = "/tmp/proerd_frames/frame_"
 
-    # Animação simples: personagens entram e a câmera aproxima levemente.
+    # Entrada dos personagens e leve aproximação da câmera.
     for prefix, start_x, end_x in (("JOAO", -5.0, -1.45), ("MATHEUS", 5.0, 1.45)):
         for suffix in ("_body", "_head", "_hair", "_legL", "_legR", "_eyeL", "_eyeR"):
             obj = bpy.data.objects.get(prefix + suffix)
