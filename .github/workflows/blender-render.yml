@@ -1,0 +1,40 @@
+name: Blender Render
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'blender/**'
+      - 'assets/**'
+
+jobs:
+  render:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Blender
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y blender
+          blender --version
+
+      - name: Bootstrap Blender project
+        run: blender --background --python blender/scripts/project_bootstrap.py
+
+      - name: Check project files
+        run: |
+          echo "Blender pipeline initialized."
+          find blender -maxdepth 3 -type f -print
+
+      - name: Upload render workspace
+        uses: actions/upload-artifact@v4
+        with:
+          name: proerd-3d-workspace
+          path: |
+            blender/
+            assets/
