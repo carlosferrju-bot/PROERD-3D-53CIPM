@@ -37,12 +37,11 @@ jobs:
         run: |
           mkdir -p /tmp/proerd_frames
           blender --background /tmp/PROERD_SC01_demo.blend \
-            --render-output /tmp/proerd_frames/frame_ \
-            --render-format PNG \
-            --start-frame 1 \
-            --end-frame 180 \
-            --render-threads 0 \
-            --render
+            -o /tmp/proerd_frames/frame_ \
+            -F PNG \
+            -s 1 \
+            -e 180 \
+            -a
 
       - name: Encode SC01 MP4
         run: |
